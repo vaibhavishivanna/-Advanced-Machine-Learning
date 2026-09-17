@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+.venv/
+venv/
+ENV/
+
+# Tooling and coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Notebooks and generated outputs
+.ipynb_checkpoints/
+outputs/
+results/
+figures/
+
+# Local datasets (the assignment provides these separately)
+code/data/*
+!code/data/.gitkeep
+
+# LaTeX generated files
+*.aux
+*.bcf
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+report/*.pdf
+
+# macOS / editors
+.DS_Store
+.idea/
+.vscode/
