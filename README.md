@@ -14,7 +14,6 @@ the final report are not included.
 │   ├── data/            # Place datasets here locally; dataset files are not committed
 │   ├── tests/           # Tests for the implementation
 │   └── README.md
-├── report/              # LaTeX source and generated report PDF
 ├── requirements.txt
 └── .gitignore
 ```
@@ -44,4 +43,5 @@ code will be added as part of the assignment implementation.
 ## Implementation status
 
 This is a setup scaffold. Add the algorithms, data pipeline, experiments,
-tests, and LaTeX report in subsequent work.
+and tests in subsequent work. The report will be written and submitted
+externally.
