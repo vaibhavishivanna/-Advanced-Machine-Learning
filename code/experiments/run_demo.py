@@ -8,10 +8,10 @@ NMF experiments.
 Run from the code/ folder, with ORL and CroppedYaleB placed under
 code/data/ (per the assignment's submission instructions):
 
-    python data_experiments/run_demo.py \
+    python experiments/run_demo.py \
         --orl_root data/ORL \
         --yaleb_root data/CroppedYaleB \
-        --out_dir data_experiments/outputs \
+        --out_dir outputs  \
         --block_sizes 10 15 20 \
         --num_blocks 1 3
 

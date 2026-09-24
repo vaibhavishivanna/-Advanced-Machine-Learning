@@ -42,3 +42,11 @@ report/*.pdf
 .DS_Store
 .idea/
 .vscode/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environments
+.venv/
+venv/

@@ -1,2 +1,4 @@
 # Required numerical dependencies permitted for NMF implementation
 numpy>=1.24
+matplotlib
+pillow
