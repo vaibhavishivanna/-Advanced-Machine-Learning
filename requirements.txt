@@ -2,3 +2,9 @@
 numpy>=1.24
 matplotlib
 pillow
+
+# Optional evaluation dependency (used only for Accuracy/NMI, never for NMF)
+scikit-learn
+
+# Test runner used by the repository-level test command
+pytest
