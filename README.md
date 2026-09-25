@@ -1,9 +1,9 @@
 # Advanced Machine Learning — Assignment 1
 
-This repository is the starter project for the NMF robustness assignment on
-face-image reconstruction. It intentionally contains project structure and
-environment setup only; algorithm implementations, experiments, results, and
-the final report are not included.
+This repository contains an NMF robustness experiment for face-image
+reconstruction. It includes two NumPy-based NMF implementations, ORL and
+Extended YaleB data loaders, block-occlusion generation, reproducible
+evaluation, automated tests, and report-ready result plotting.
 
 The assignment permits the Python standard library, NumPy, and SciPy for
 implementing NMF algorithms. Scikit-learn is included only for the optional
@@ -14,10 +14,10 @@ Matplotlib is included for experiment visualizations.
 
 Do not commit the ORL or Extended YaleB datasets. Download or obtain them
 separately and place them under `code/data/`. Dataset-loading and preprocessing
-code will be added as part of the assignment implementation.
+code is included under `code/experiments/`.
 
-## Implementation status
+## Running the code
 
-This is a setup scaffold. Add the algorithms, data pipeline, experiments,
-and tests in subsequent work. The report will be written and submitted
-externally.
+Install the dependencies from `requirements.txt`, then follow the commands in
+`code/README.md`. Run those commands from the `code/` directory. Generated
+outputs and local dataset files are excluded from version control.
