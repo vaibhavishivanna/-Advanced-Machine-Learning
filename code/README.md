@@ -61,11 +61,16 @@ python run_experiments.py \
   --count-sweep-size 10
 ```
 
-Non-overlapping placement is requested by default. The current noise function
-uses best-effort placement, so the runner records the true covered fraction and
-warns when overlap occurs. Add `--allow-overlap` only for a separately documented
-experiment. Use `--clustering-metrics` to add the optional Accuracy and NMI
-evaluation.
+Non-overlapping placement is enforced by default. An impossible placement raises
+a clear error instead of silently overlapping blocks. Add `--allow-overlap` only
+for a separately documented experiment. The runner records both the requested
+and actual covered fractions. Use `--clustering-metrics` to add the optional
+Accuracy and NMI evaluation.
+
+The runner checks relative loss convergence with a conservative tolerance of
+`1e-5`. Use `--no-early-stopping` to force all `--max-iter` updates, or adjust
+`--tol`, `--min-iter`, and `--patience` when documenting another convergence
+rule.
 
 After the experiment finishes, generate aggregate CSV/LaTeX tables, RRE plots,
 and reconstruction panels:

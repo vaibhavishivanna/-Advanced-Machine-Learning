@@ -36,6 +36,8 @@ def read_results(path):
                 "sample_count",
             ):
                 row[key] = int(row[key])
+            row["min_iter"] = int(row["min_iter"]) if row.get("min_iter") else None
+            row["patience"] = int(row["patience"]) if row.get("patience") else None
             for key in (
                 "nominal_occluded_fraction",
                 "actual_occluded_fraction",
@@ -50,6 +52,7 @@ def read_results(path):
                 row[key] = float(row[key])
             for key in ("include_size_sweep", "include_count_sweep"):
                 row[key] = row[key].lower() == "true"
+            row["tol"] = float(row["tol"]) if row.get("tol") else None
             for key in ("accuracy", "nmi"):
                 row[key] = float(row[key]) if row[key] else None
             rows.append(row)

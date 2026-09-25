@@ -1,11 +1,51 @@
+import csv
+import os
+import tempfile
 import unittest
 
 import numpy as np
 
-from plot_results import aggregate_results
+from plot_results import aggregate_results, read_results
 
 
 class TestResultAggregation(unittest.TestCase):
+    def test_reader_accepts_results_without_convergence_columns(self):
+        row = {
+            "dataset": "ORL",
+            "run": 0,
+            "condition_id": "baseline",
+            "include_size_sweep": True,
+            "include_count_sweep": True,
+            "block_size": 0,
+            "num_blocks": 0,
+            "rank": 2,
+            "max_iter": 10,
+            "iterations": 10,
+            "sample_count": 4,
+            "nominal_occluded_fraction": 0.0,
+            "actual_occluded_fraction": 0.0,
+            "observed_changed_fraction": 0.0,
+            "sample_frac": 1.0,
+            "actual_sample_frac": 1.0,
+            "rre": 0.1,
+            "runtime_seconds": 0.2,
+            "initial_training_loss": 2.0,
+            "final_training_loss": 1.0,
+            "accuracy": "",
+            "nmi": "",
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "results.csv")
+            with open(path, "w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(handle, fieldnames=list(row))
+                writer.writeheader()
+                writer.writerow(row)
+            parsed = read_results(path)[0]
+
+        self.assertIsNone(parsed["tol"])
+        self.assertIsNone(parsed["min_iter"])
+        self.assertIsNone(parsed["patience"])
+
     def test_mean_sample_standard_deviation_and_grouping(self):
         rows = []
         for run, rre, runtime in ((0, 0.1, 1.0), (1, 0.2, 2.0), (2, 0.3, 3.0)):

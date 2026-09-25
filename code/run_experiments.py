@@ -56,6 +56,9 @@ RESULT_FIELDS = [
     "algorithm",
     "rank",
     "max_iter",
+    "tol",
+    "min_iter",
+    "patience",
     "iterations",
     "smoothing",
     "sample_frac",
@@ -183,6 +186,14 @@ def parse_args(argv=None):
     parser.add_argument("--sampling", choices=("stratified", "random"),
                         default="stratified")
     parser.add_argument("--max-iter", type=int, default=200)
+    parser.add_argument("--tol", type=float, default=1e-5,
+                        help="relative-loss tolerance used for early stopping")
+    parser.add_argument("--min-iter", type=int, default=20,
+                        help="minimum updates before checking convergence")
+    parser.add_argument("--patience", type=int, default=5,
+                        help="consecutive small improvements required to stop")
+    parser.add_argument("--no-early-stopping", action="store_true",
+                        help="always use the full max-iter budget")
     parser.add_argument("--orl-rank", type=int, default=0,
                         help="0 uses the number of ORL classes")
     parser.add_argument("--yaleb-rank", type=int, default=0,
@@ -206,6 +217,12 @@ def validate_args(args, conditions):
         raise ValueError("runs must be positive")
     if args.max_iter < 1:
         raise ValueError("max_iter must be positive")
+    if not np.isfinite(args.tol) or args.tol <= 0:
+        raise ValueError("tol must be finite and positive")
+    if args.min_iter < 0:
+        raise ValueError("min_iter must be nonnegative")
+    if args.patience < 1:
+        raise ValueError("patience must be positive")
     if not 0 < args.sample_frac <= 1:
         raise ValueError("sample_frac must be in the interval (0, 1]")
     if not np.isfinite(args.smoothing) or args.smoothing <= 0:
@@ -360,8 +377,9 @@ def main(argv=None):
 
                 if condition.num_blocks == 0:
                     noisy_raw = clean_raw.copy()
+                    occlusion_mask = np.zeros(clean_raw.shape, dtype=bool)
                 else:
-                    noisy_raw = add_occlusion_noise(
+                    noisy_raw, occlusion_mask = add_occlusion_noise(
                         clean_raw,
                         img_shape,
                         block_size=condition.block_size,
@@ -369,6 +387,7 @@ def main(argv=None):
                         fill_value=255.0,
                         allow_overlap=args.allow_overlap,
                         random_state=noise_seed,
+                        return_mask=True,
                     )
                 noisy = normalize_unit_interval(noisy_raw)
 
@@ -376,32 +395,7 @@ def main(argv=None):
                     condition.block_size ** 2 * condition.num_blocks
                     / float(img_shape[0] * img_shape[1])
                 )
-                if condition.num_blocks == 0:
-                    actual_occluded_fraction = 0.0
-                else:
-                    # Replaying the same seeded placement on a binary image gives
-                    # the true occlusion footprint even where a clean face pixel
-                    # was already white.  It also reveals best-effort overlaps in
-                    # the current noise function without changing it.
-                    footprint = add_occlusion_noise(
-                        np.zeros(clean_raw.shape, dtype=np.uint8),
-                        img_shape,
-                        block_size=condition.block_size,
-                        num_blocks=condition.num_blocks,
-                        fill_value=1,
-                        allow_overlap=args.allow_overlap,
-                        random_state=noise_seed,
-                    )
-                    actual_occluded_fraction = float(np.mean(footprint != 0))
-                    if (
-                        not args.allow_overlap
-                        and actual_occluded_fraction + 1e-12 < nominal_fraction
-                    ):
-                        print(
-                            "      warning: best-effort non-overlap placement "
-                            f"covered {actual_occluded_fraction:.4f}, below the "
-                            f"nominal {nominal_fraction:.4f} fraction"
-                        )
+                actual_occluded_fraction = float(np.mean(occlusion_mask))
                 changed_fraction = float(np.mean(noisy_raw != clean_raw))
                 snapshot = {
                     "clean": clean[:, 0],
@@ -412,6 +406,7 @@ def main(argv=None):
                     ("standard_nmf", standard_nmf),
                     ("robust_l1_nmf", robust_l1_nmf),
                 )
+                convergence_tolerance = None if args.no_early_stopping else args.tol
                 for algorithm_name, algorithm in algorithms:
                     print(
                         f"    {dataset_name} run={run_index + 1}/{args.runs} "
@@ -425,6 +420,9 @@ def main(argv=None):
                             max_iter=args.max_iter,
                             random_state=initialisation_seed,
                             smoothing=args.smoothing,
+                            tol=convergence_tolerance,
+                            min_iter=args.min_iter,
+                            patience=args.patience,
                         )
                     else:
                         W, H, losses = algorithm(
@@ -432,6 +430,9 @@ def main(argv=None):
                             rank,
                             max_iter=args.max_iter,
                             random_state=initialisation_seed,
+                            tol=convergence_tolerance,
+                            min_iter=args.min_iter,
+                            patience=args.patience,
                         )
                     runtime = time.perf_counter() - start
 
@@ -463,6 +464,9 @@ def main(argv=None):
                         "algorithm": algorithm_name,
                         "rank": rank,
                         "max_iter": args.max_iter,
+                        "tol": convergence_tolerance if convergence_tolerance is not None else "",
+                        "min_iter": args.min_iter,
+                        "patience": args.patience,
                         "iterations": len(losses) - 1,
                         "smoothing": args.smoothing if algorithm_name == "robust_l1_nmf" else "",
                         "sample_frac": args.sample_frac,
@@ -498,7 +502,7 @@ def main(argv=None):
                     os.replace(temporary_snapshot, snapshot_path)
 
                 # Checkpoint after each condition because full YaleB runs can be
-                # long with the current fixed-iteration algorithm APIs.
+                # long even when convergence checks are enabled.
                 _write_csv(results_path, results)
                 _write_json(indices_path, sampled_indices)
                 _write_json(metadata_path, metadata)

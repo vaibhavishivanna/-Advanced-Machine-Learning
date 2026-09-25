@@ -47,6 +47,14 @@ class TestPipelineSmoke(unittest.TestCase):
             self.assertTrue(all(np.isfinite(float(row["rre"])) for row in rows))
             self.assertTrue(all(int(row["iterations"]) == 2 for row in rows))
             self.assertTrue(all(float(row["actual_sample_frac"]) == 1.0 for row in rows))
+            corrupted_rows = [
+                row for row in rows if row["condition_id"] != "baseline"
+            ]
+            self.assertTrue(all(
+                float(row["actual_occluded_fraction"])
+                == float(row["nominal_occluded_fraction"])
+                for row in corrupted_rows
+            ))
 
             with self.assertRaises(FileExistsError):
                 experiment_main([
