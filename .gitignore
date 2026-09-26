@@ -19,6 +19,10 @@ htmlcov/
 outputs/
 results/
 figures/
+!code/final_results/figures/
+!code/final_results/figures/*.png
+!code/final_results/figures/reconstructions/
+!code/final_results/figures/reconstructions/*.png
 
 # Local datasets (the assignment provides these separately)
 /data/
