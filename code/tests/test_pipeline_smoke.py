@@ -1,5 +1,9 @@
 import csv
+import json
 import os
+from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -11,6 +15,42 @@ from run_experiments import main as experiment_main
 
 
 class TestPipelineSmoke(unittest.TestCase):
+    def test_cli_defaults_to_one_thread_and_respects_override(self):
+        thread_variables = (
+            "OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS",
+            "VECLIB_MAXIMUM_THREADS",
+        )
+        runner = Path(__file__).resolve().parents[1] / "run_experiments.py"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subject = root / "data" / "s1"
+            subject.mkdir(parents=True)
+            Image.fromarray(np.full((6, 6), 60, dtype=np.uint8)).save(subject / "1.pgm")
+            for override in (None, "2"):
+                with self.subTest(openblas_override=override):
+                    environment = {
+                        key: value for key, value in os.environ.items()
+                        if key not in thread_variables
+                    }
+                    if override is not None:
+                        environment["OPENBLAS_NUM_THREADS"] = override
+                    output = root / f"output-{override}"
+                    subprocess.run([
+                        sys.executable, str(runner),
+                        "--datasets", "ORL", "--orl-root", str(root / "data"),
+                        "--output-dir", str(output), "--runs", "1",
+                        "--sample-frac", "1", "--max-iter", "2",
+                        "--block-sizes", "1", "--block-counts", "1",
+                        "--count-sweep-size", "1", "--orl-rank", "1",
+                    ], env=environment, check=True, capture_output=True, text=True,
+                       timeout=60)
+                    timing = json.loads((output / "timing.json").read_text())
+                    expected = {key: "1" for key in thread_variables}
+                    expected["OPENBLAS_NUM_THREADS"] = override or "1"
+                    self.assertEqual(timing["thread_environment"], expected)
+                    self.assertEqual(timing["new_result_rows"], 4)
+                    self.assertGreater(timing["elapsed_seconds"], 0)
+
     def test_tiny_end_to_end_run(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             data_root = os.path.join(temporary_directory, "ORL")
@@ -88,6 +128,11 @@ class TestPipelineSmoke(unittest.TestCase):
             with open(results_path, newline="", encoding="utf-8") as handle:
                 resumed_rows = list(csv.DictReader(handle))
             self.assertEqual(resumed_rows, rows)
+            with open(os.path.join(output_dir, "timing.json"), encoding="utf-8") as handle:
+                timing = json.load(handle)
+            self.assertTrue(timing["resumed"])
+            self.assertEqual(timing["new_result_rows"], 0)
+            self.assertEqual(timing["total_result_rows"], 4)
 
             stale_figure_dir = os.path.join(output_dir, "figures", "reconstructions")
             os.makedirs(stale_figure_dir, exist_ok=True)

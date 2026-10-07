@@ -20,8 +20,20 @@ import csv
 import hashlib
 import json
 import os
+import platform
 import time
 from dataclasses import asdict, dataclass
+
+# Set these before NumPy loads its BLAS backend. On the assignment's narrow
+# factor matrices, coordinating many BLAS threads can cost more than it saves.
+# Respect explicit user settings and avoid changing callers that import us.
+THREAD_ENVIRONMENT_VARIABLES = (
+    "OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+)
+if __name__ == "__main__":
+    for variable in THREAD_ENVIRONMENT_VARIABLES:
+        os.environ.setdefault(variable, "1")
 
 import numpy as np
 
@@ -236,6 +248,7 @@ def validate_args(args, conditions):
 
 
 def main(argv=None):
+    invocation_start = time.perf_counter()
     args = parse_args(argv)
     conditions = build_conditions(
         args.block_sizes,
@@ -292,6 +305,7 @@ def main(argv=None):
         (row["dataset"], int(row["run"]), row["condition_id"], row["algorithm"])
         for row in results
     }
+    initial_row_count = len(results)
 
     for dataset_name in args.datasets:
         loader, root, rank_override = dataset_specs[dataset_name]
@@ -507,7 +521,23 @@ def main(argv=None):
                 _write_json(indices_path, sampled_indices)
                 _write_json(metadata_path, metadata)
 
+    elapsed_seconds = time.perf_counter() - invocation_start
+    _write_json(os.path.join(args.output_dir, "timing.json"), {
+        "elapsed_seconds": elapsed_seconds,
+        "scope": "this runner invocation; includes loading, fitting, metrics and checkpoints; excludes plotting",
+        "resumed": bool(args.resume),
+        "new_result_rows": len(results) - initial_row_count,
+        "total_result_rows": len(results),
+        "python_version": platform.python_version(),
+        "numpy_version": np.__version__,
+        "platform": platform.platform(),
+        "thread_environment": {
+            variable: os.environ.get(variable)
+            for variable in THREAD_ENVIRONMENT_VARIABLES
+        },
+    })
     print(f"\nSaved {len(results)} result rows to {args.output_dir}")
+    print(f"This invocation took {elapsed_seconds / 60:.2f} minutes (excluding plotting).")
     print("Next: python plot_results.py --results "
           f"{os.path.join(args.output_dir, 'results.csv')} --output-dir {args.output_dir}")
 
